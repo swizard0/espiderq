@@ -1,14 +1,21 @@
 -module(espiderq).
 -behaviour(gen_server).
+
+%% API
 -export([start_link/1, stop/1]).
+
+%% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
+%% API implementation
 start_link(ConnectArgs) ->
     gen_server:start_link(?MODULE, {init, ConnectArgs}, []).
 
 stop(Pid) ->
     gen_server:call(Pid, stop).
 
+
+%% gen_server implementation
 init({init, ConnectArgs}) ->
     {ok, Socket} = ezmq:start([{type, dealer}]),
     ok = erlang:apply(fun ezmq:connect/5, [Socket|ConnectArgs]),
