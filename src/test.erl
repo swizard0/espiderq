@@ -1,5 +1,5 @@
 -module(test).
--export([run/7, random_delays/4]).
+-export([run/7, random_delays/4, collect_stats/3]).
 
 worker_fold(_SpiderQ, 0, _Proc, Seed) ->
     {ok, Seed};
@@ -30,17 +30,14 @@ run(ConnectArgs, WorkersCount, WorkerReqsCount, MapProc, MapSeed, ReduceProc, Re
     ok = spawn_loop(SpiderQ, WorkersCount, WorkerReqsCount, MapProc, MapSeed),
     {ExecutionMs, {ok, Result}} = timer:tc(fun() -> wait_done(SpiderQ, WorkersCount, ReduceProc, ReduceSeed) end),
     process_flag( trap_exit, false ),
-    io:format(" ;; ~p~n", [[{result, Result},
-                            {total_ms, ExecutionMs div 1000},
-                            {reqs, (WorkersCount * WorkerReqsCount)}]]),
     {ok,
-     {result, Result},
-     {total_ms, ExecutionMs div 1000},
-     {reqs, (WorkersCount * WorkerReqsCount)},
-     {rps, case ExecutionMs < 1000000 of
-               true -> WorkersCount * WorkerReqsCount;
-               false -> (WorkersCount * WorkerReqsCount) / (ExecutionMs div 1000000)
-           end}}.
+     [{result, Result},
+      {total_ms, ExecutionMs div 1000},
+      {reqs, (WorkersCount * WorkerReqsCount)},
+      {rps, case ExecutionMs < 1000000 of
+                true -> WorkersCount * WorkerReqsCount;
+                false -> (WorkersCount * WorkerReqsCount) / (ExecutionMs div 1000000)
+            end}]}.
 
 wait_done(_SpiderQ, 0, _Proc, Seed) ->
     {ok, Seed};
@@ -67,3 +64,29 @@ random_delays(ConnectArgs, WorkersCount, WorkerReqsCount, MaxDelayMs) ->
         map_seed,
         fun(reduce_seed, map_seed) -> {ok, reduce_seed} end,
         reduce_seed).
+
+stats_inc(Stats, Key, Inc) ->
+    case gb_trees:lookup(Key, Stats) of
+        none -> gb_trees:insert(Key, Inc, Stats);
+        {value, Count} -> gb_trees:update(Key, Count + Inc, Stats)
+    end.
+
+stats_merge(BaseStats, MergeStatsIter) ->
+    case gb_trees:next(MergeStatsIter) of
+        none ->
+            BaseStats;
+        {Key, Count, NextIter} ->
+            stats_merge(stats_inc(BaseStats, Key, Count), NextIter)
+    end.
+
+collect_stats(ConnectArgs, WorkersCount, WorkerReqsCount) ->
+    {ok, Results} =
+        run(ConnectArgs, WorkersCount, WorkerReqsCount,
+            fun(Stats, _Id, Data) -> {ok, stats_inc(Stats, Data, 1)} end,
+            gb_trees:empty(),
+            fun(Stats, MapStats) -> {ok, stats_merge(Stats, gb_trees:iterator(MapStats))} end,
+            gb_trees:empty()),
+    {result, Stats} = lists:keyfind(result, 1, Results),
+    lists:foreach(fun({Data, Count}) -> io:format("~p x ~p~n", [Data, Count]) end,
+                  lists:sort(fun({_, CountA}, {_, CountB}) -> CountB < CountA end, gb_trees:to_list(Stats))),
+    ok.
