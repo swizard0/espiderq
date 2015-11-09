@@ -1,5 +1,5 @@
 -module(test).
--export([run/7, random_delays/4, collect_stats/3]).
+-export([run/7, random_delays/4, collect_stats/4]).
 
 worker_fold(_SpiderQ, 0, _Proc, Seed) ->
     {ok, Seed};
@@ -79,7 +79,7 @@ stats_merge(BaseStats, MergeStatsIter) ->
             stats_merge(stats_inc(BaseStats, Key, Count), NextIter)
     end.
 
-collect_stats(ConnectArgs, WorkersCount, WorkerReqsCount) ->
+collect_stats(ConnectArgs, WorkersCount, WorkerReqsCount, OutputFile) ->
     {ok, Results} =
         run(ConnectArgs, WorkersCount, WorkerReqsCount,
             fun(Stats, _Id, Data) -> {ok, stats_inc(Stats, Data, 1)} end,
@@ -87,6 +87,7 @@ collect_stats(ConnectArgs, WorkersCount, WorkerReqsCount) ->
             fun(Stats, MapStats) -> {ok, stats_merge(Stats, gb_trees:iterator(MapStats))} end,
             gb_trees:empty()),
     {result, Stats} = lists:keyfind(result, 1, Results),
-    lists:foreach(fun({Data, Count}) -> io:format("~p x ~p~n", [Data, Count]) end,
+    {ok, Fd} = file:open(OutputFile, [write, binary, raw]),
+    lists:foreach(fun({Data, Count}) -> ok = file:write(Fd, [Data, <<" x ">>, erlang:integer_to_binary(Count), <<"\n">>]) end,
                   lists:sort(fun({_, CountA}, {_, CountB}) -> CountB < CountA end, gb_trees:to_list(Stats))),
-    ok.
+    file:close(Fd).
