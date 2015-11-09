@@ -25,6 +25,6 @@ decode(<<16#01:8, 16#03:8, Id:32/big, Data/binary>>) ->
 decode(<<16#01:8, 16#04:8>>) ->
     repaid;
 decode(<<16#01:8, 16#05:8, Count:64/big, Add:64/big, Lend:64/big, Repay:64/big, Stats:64/big>>) ->
-    {stats, {count, Count}, {add, Add}, {lend, Lend}, {repay, Repay}, {stats, Stats}};
+    {stats, [{count, Count}, {add, Add}, {lend, Lend}, {repay, Repay}, {stats, Stats}]};
 decode(Unrecognized) ->
     {decode_error, Unrecognized}.
