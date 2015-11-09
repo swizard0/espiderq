@@ -25,19 +25,23 @@ run(ConnectArgs, WorkersCount, WorkerReqsCount, MaxDelayMs) ->
     {ok, SpiderQ} = espiderq:start_link(ConnectArgs),
     process_flag( trap_exit, true ),
     ok = spawn_loop(SpiderQ, WorkersCount, WorkerReqsCount, MaxDelayMs),
-    {ExecutionMs, ok} = timer:tc(fun() -> wait_done(WorkersCount) end),
+    {ExecutionMs, ok} = timer:tc(fun() -> wait_done(SpiderQ, WorkersCount) end),
     process_flag( trap_exit, false ),
     {ok, 
-     {total_ms, ExecutionMs},
+     {total_ms, ExecutionMs div 1000},
      {reqs, (WorkersCount * WorkerReqsCount)},
-     {rps, (WorkersCount * WorkerReqsCount) / ExecutionMs}}.
+     {rps, (WorkersCount * WorkerReqsCount) div (ExecutionMs / 1000000)}}.
 
-wait_done(0) ->
+wait_done(_SpiderQ, 0) ->
     ok;
-wait_done(WorkersCount) ->
+wait_done(SpiderQ, WorkersCount) ->
     receive
         { 'EXIT', _Pid, normal } ->
-            wait_done(WorkersCount - 1);
+            wait_done(SpiderQ, WorkersCount - 1);
         Msg ->
             error({unexpected_msg_received, Msg})
+    after 3000 ->
+            {stats, Stats} = espiderq:req(SpiderQ, stats),
+            io:format("~p workers in progress, spiderq stats: ~p~n", [WorkersCount, Stats]),
+            wait_done(SpiderQ, WorkersCount)
     end.
