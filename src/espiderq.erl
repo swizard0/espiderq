@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, stop/1]).
+-export([start_link/1, start_link/2, stop/1]).
 -export([req/2, req/3]).
 
 %% gen_server callbacks
@@ -11,6 +11,9 @@
 %% API implementation
 start_link(ConnectArgs) ->
     gen_server:start_link(?MODULE, {init, ConnectArgs}, []).
+
+start_link(RegisterName, ConnectArgs) ->
+    gen_server:start_link({local, RegisterName}, ?MODULE, {init, ConnectArgs}, []).
 
 stop(Pid) ->
     gen_server:call(Pid, stop).
