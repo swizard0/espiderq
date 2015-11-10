@@ -30,6 +30,7 @@ run(ConnectArgs, WorkersCount, WorkerReqsCount, MapProc, MapSeed, ReduceProc, Re
     ok = spawn_loop(SpiderQ, WorkersCount, WorkerReqsCount, MapProc, MapSeed),
     {ExecutionMs, {ok, Result}} = timer:tc(fun() -> wait_done(SpiderQ, WorkersCount, ReduceProc, ReduceSeed) end),
     process_flag( trap_exit, false ),
+    ok = espiderq:stop(SpiderQ),
     {ok,
      [{result, Result},
       {total_ms, ExecutionMs div 1000},
