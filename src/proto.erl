@@ -2,29 +2,48 @@
 -export([encode/1, decode/1]).
 
 encode(count) -> 
-    <<16#01:8, 16#01:8>>;
-encode({add, Data}) ->
-    <<16#01:8, 16#02:8, Data/binary>>;
+    <<16#01:8>>;
+encode({add, Key, Value}) ->
+    <<16#02:8, (byte_size(Key)):32/big, Key/binary, (byte_size(Value)):32/big, Value/binary>>;
+encode({update, Key, Value}) ->
+    <<16#03:8, (byte_size(Key)):32/big, Key/binary, (byte_size(Value)):32/big, Value/binary>>;
 encode({lend, TimeoutMs}) ->
-    <<16#01:8, 16#03:8, TimeoutMs:64/big>>;
-encode({repay, Id, penalty}) ->
-    <<16#01:8, 16#04:8, Id:32/big, 16#01:8>>;
-encode({repay, Id, reward}) ->
-    <<16#01:8, 16#04:8, Id:32/big, 16#02:8>>;
-encode({repay, Id, front}) ->
-    <<16#01:8, 16#04:8, Id:32/big, 16#03:8>>;
+    <<16#04:8, TimeoutMs:64/big>>;
+encode({repay, Key, ChangedValue, Status}) ->
+    StatusBin = case Status of penalty -> 1; reward -> 2; front -> 3; drop -> 4 end,
+    <<16#05:8, (byte_size(Key)):32/big, Key/binary, (byte_size(ChangedValue)):32/big, ChangedValue/binary, StatusBin:8>>;
+encode({heartbeat, Key, TimeoutMs}) ->
+    <<16#06:8, (byte_size(Key)):32/big, Key/binary, TimeoutMs:64/big>>;
 encode(stats) ->
-    <<16#01:8, 16#05:8>>.
+    <<16#07:8>>;
+encode(terminate) ->
+    <<16#08:8>>.
 
-decode(<<16#01:8, 16#01:8, Count:32/big>>) ->
+decode(<<16#01:8, Count:32/big>>) ->
     {counted, Count};
-decode(<<16#01:8, 16#02:8, Id:32/big>>) ->
-    {added, Id};
-decode(<<16#01:8, 16#03:8, Id:32/big, Data/binary>>) ->
-    {lent, Id, Data};
-decode(<<16#01:8, 16#04:8>>) ->
+decode(<<16#02:8>>) ->
+    added;
+decode(<<16#03:8>>) ->
+    kept;
+decode(<<16#04:8>>) ->
+    updated;
+decode(<<16#05:8>>) ->
+    not_found;
+decode(<<16#06:8, KeyLen:32/big, Key:KeyLen/binary, ValueLen:32/big, Value:ValueLen/binary>>) ->
+    {lent, Key, Value};
+decode(<<16#07:8>>) ->
     repaid;
-decode(<<16#01:8, 16#05:8, Count:64/big, Add:64/big, Lend:64/big, Repay:64/big, Stats:64/big>>) ->
-    {stats, [{count, Count}, {add, Add}, {lend, Lend}, {repay, Repay}, {stats, Stats}]};
+decode(<<16#08:8>>) ->
+    heartbeaten;
+decode(<<16#0A:8, Count:64/big, Add:64/big, Update:64/big, Lend:64/big, Repay:64/big, Heartbeat:64/big, Stats:64/big>>) ->
+    {stats_got, [{count, Count},
+                 {add, Add},
+                 {update, Update},
+                 {lend, Lend},
+                 {repay, Repay},
+                 {heartbeat, Heartbeat},
+                 {stats, Stats}]};
+decode(<<16#0C:8>>) ->
+    terminated;
 decode(Unrecognized) ->
     {decode_error, Unrecognized}.
