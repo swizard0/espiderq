@@ -1,6 +1,8 @@
 -module(proto).
 -export([encode/1, decode/1]).
 
+encode(ping) ->
+    <<16#0B:8>>;
 encode(count) ->
     <<16#01:8>>;
 encode({add, Key, Value}) ->
@@ -24,6 +26,8 @@ encode(flush) ->
 encode(terminate) ->
     <<16#08:8>>.
 
+decode(<<16#11:8>>) ->
+    pong;
 decode(<<16#01:8, Count:32/big>>) ->
     {counted, Count};
 decode(<<16#02:8>>) ->
