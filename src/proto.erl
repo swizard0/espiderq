@@ -50,7 +50,7 @@ decode(<<16#07:8>>) ->
     repaid;
 decode(<<16#08:8>>) ->
     heartbeaten;
-decode(<<16#0D:8>>) ->
+decode(<<16#0F:8>>) ->
     flushed;
 decode(<<16#0A:8, Count:64/big, Add:64/big, Update:64/big, Lookup:64/big, Lend:64/big, Repay:64/big, Heartbeat:64/big, Stats:64/big>>) ->
     {stats_got, [{count, Count},
