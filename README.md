@@ -10,7 +10,7 @@ Just include this repository in your project's `rebar.config` file and run `reba
 
 ## Usage
 
-```
+```erlang
 1> {ok, _} = application:ensure_all_started(espiderq).
 {ok,[sasl,syntax_tools,compiler,goldrush,lager,
      gen_listener_tcp,ezmq,espiderq]}
