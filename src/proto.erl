@@ -12,6 +12,8 @@ encode({update, Key, Value}) ->
     <<16#03:8, (byte_size(Key)):32/big, Key/binary, (byte_size(Value)):32/big, Value/binary>>;
 encode({lookup, Key}) ->
     <<16#09:8, (byte_size(Key)):32/big, Key/binary>>;
+encode({remove, Key}) ->
+    <<16#0C:8, (byte_size(Key)):32/big, Key/binary>>;
 encode({lend, TimeoutMs, Mode}) ->
     ModeBin = case Mode of block -> 1; poll -> 2 end,
     <<16#04:8, TimeoutMs:64/big, ModeBin:8>>;
@@ -53,16 +55,23 @@ decode(<<16#08:8>>) ->
     heartbeaten;
 decode(<<16#0F:8>>) ->
     flushed;
-decode(<<16#0A:8, Count:64/big, Add:64/big, Update:64/big, Lookup:64/big, Lend:64/big, Repay:64/big, Heartbeat:64/big, Stats:64/big>>) ->
-    {stats_got, [{count, Count},
+decode(<<16#0A:8, Ping:64/big, Count:64/big, Add:64/big, Update:64/big, Lookup:64/big, Remove:64/big,
+         Lend:64/big, Repay:64/big, Heartbeat:64/big, Stats:64/big>>) ->
+    {stats_got, [{ping, Ping},
+                 {count, Count},
                  {add, Add},
                  {update, Update},
                  {lookup, Lookup},
+                 {remove, Remove},
                  {lend, Lend},
                  {repay, Repay},
                  {heartbeat, Heartbeat},
                  {stats, Stats}]};
 decode(<<16#0C:8>>) ->
     terminated;
+decode(<<16#12:8>>) ->
+    removed;
+decode(<<16#13:8>>) ->
+    not_removed;
 decode(Unrecognized) ->
     {decode_error, Unrecognized}.
