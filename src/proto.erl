@@ -5,8 +5,9 @@ encode(ping) ->
     <<16#0B:8>>;
 encode(count) ->
     <<16#01:8>>;
-encode({add, Key, Value}) ->
-    <<16#02:8, (byte_size(Key)):32/big, Key/binary, (byte_size(Value)):32/big, Value/binary>>;
+encode({add, Key, Value, Mode}) ->
+    ModeBin = case Mode of head -> 1; tail -> 2 end,
+    <<16#02:8, (byte_size(Key)):32/big, Key/binary, (byte_size(Value)):32/big, Value/binary, ModeBin:8>>;
 encode({update, Key, Value}) ->
     <<16#03:8, (byte_size(Key)):32/big, Key/binary, (byte_size(Value)):32/big, Value/binary>>;
 encode({lookup, Key}) ->
