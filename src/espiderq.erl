@@ -12,11 +12,10 @@ start_link(ConnectArgs) ->
     gen_server:start_link(?MODULE, ConnectArgs, []).
 
 start_link(RegisterName, ConnectArgs) ->
-    io:format("starting ~p under the name of ~p~n", [?MODULE, RegisterName]),
     gen_server:start_link({local, RegisterName}, ?MODULE, ConnectArgs, []).
 
 stop(Pid) ->
-    gen_server:call(Pid, stop).
+    gen_server:stop(Pid).
 
 req(Pid, Request) ->
     gen_server:call(Pid, {req, Request}).
@@ -33,11 +32,8 @@ init(ConnectArgs_) ->
                       _ -> ConnectArgs_
                   end,
     case erlang:apply(chumak, connect, [Socket | ConnectArgs]) of
-        {ok, Pid} ->
-            io:format("~p started, pid: ~p, socket: ~p, client: ~p~n", [?MODULE, self(), Socket, Pid]);
-        {error, Reason} ->
-            io:format("~p start failed: connection failed, reason: ~p~n", [?MODULE, Reason]),
-            exit({connect_error, Reason})
+        {ok, _Pid} -> ok;
+        {error, Reason} -> exit({connect_error, Reason})
     end,
     spawn_link(fun() -> recv_loop(Socket) end),
     {ok, {socket, Socket}}.
@@ -74,7 +70,7 @@ recv_loop(Socket) ->
             Response = proto:decode(ResponseBin),
             gen_server:reply(From, Response);
         {ok, Other} ->
-            io:format("unexpected recv: ~p~n", [Other]);
+            exit({unexpected_recv, Other});
         {error, Reason} ->
             exit({recv_error, Reason})
     end,
