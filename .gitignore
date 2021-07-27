@@ -3,3 +3,4 @@ deps
 log
 *~
 .rebar
+_build
