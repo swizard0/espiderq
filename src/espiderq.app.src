@@ -3,5 +3,5 @@
   {description, "Erlang spiderq 0MQ client"},
   {vsn, "0.2"},
   {registered, []},
-  {applications, [kernel, stdlib, ezmq]}
+  {applications, [kernel, stdlib, chumak]}
  ]}.
