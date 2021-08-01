@@ -2,5 +2,6 @@ ebin
 deps
 log
 *~
+*.beam
 .rebar
 _build
